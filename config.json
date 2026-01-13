@@ -1,0 +1,41 @@
+{
+    "strategies": ["high-pass-only", "high-pass-motion","acompcor", "9p", "9p-despike","ica-aroma","ica-aroma-gsr"],
+    "standardize": "psc",
+    "min_tsnr": 30,
+    "volume_fd_threshold": 0.5,
+    "volume_std_dvars_threshold": 1000,
+    "max_ratio_outliers_fd0.5_std_dvars1.5": 0.25,
+    "max_ratio_outliers_fd0.5_std_dvars1000": 0.20,
+    "scan_max_fd_threshold": 3.0,
+    "voxel_max_psc_threshold": 25,
+    "voxel_max_kurtosis_threshold": 10,
+    "spike_regression": false,
+    "frequency_bands":{
+        "slow-3": [0.067, 0.2],
+        "slow-4": [0.025, 0.067],
+        "slow-5": [0.01, 0.025]
+    },
+    "task": "task-rest",
+    "session": "ses-PSI",
+    "nuisance_regressors": ["age", "sex", "scanner", "num_vols", "mean_fd", "ratio_outliers_fd0_5_std_dvars1000", "max_fd"],
+    "nuisance_regressors_nomotion": ["age", "sex", "scanner", "num_vols"],
+    "covariates": ["PPL_mcg_L"],
+    "target_variable": "log_power",
+    "time_intervals":{
+        "Baseline": [-1000, 0],
+        "Upslope": [20, 80],
+        "Peak": [80, 150],
+        "Downslope": [150, 270],
+        "Post": [270, 1000]
+    },
+    "max_investigated_frequency": 0.25,
+    "min_investigated_frequency": 0.001,
+    "ged_max_investigated_frequency": 0.20,
+    "ged_min_investigated_frequency": 0.01,
+    "ged_frequency_step_size": 0.01,
+    "num_permutations": 1000,
+    "networks": ["Limbic","SomMot","Vis","DorsAttn","SalVentAttn","Cont","Default"],
+    "frequencies_to_plot_partial_residuals": [0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.1, 0.15, 0.2],
+    "broadband_regularization": 0.01,
+    "num_eigenvectors_to_keep": 10
+}

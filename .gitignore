@@ -1,0 +1,14 @@
+figures/
+*.csv
+*.xlsx
+data/
+*.egg-info/
+atlas_figure.ipynb
+.vscode/
+.Rhistory
+tmp.png
+tmp.ipynb
+*/unused/
+*unused*
+*Untitled*
+**/*/__pycache__/

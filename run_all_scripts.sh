@@ -1,0 +1,24 @@
+source /usr/local/miniconda/20231130/bin/activate
+conda activate p3_spectral
+
+# python scripts_preproc/p1_make_table_of_func_scans.py
+# python scripts_preproc/p2_extract_confounds_outliers.py
+# python scripts_preproc/p3_align_func_to_ppl_sdi.py
+# python scripts_preproc/p4_denoise_timeseries_voxelwise.py
+# python scripts_preproc/p5_parcellate_timeseries.py
+
+# python scripts_spectral_compute/s1_compute_mtspectra_voxelwise.py
+# # python scripts_spectral_compute/s2_compute_hhtspectra_voxelwise.py
+# python scripts_spectral_compute/s3_compute_spectral_entropy_voxelwise.py
+# python scripts_spectral_compute/s4_parcellate_spectra_and_entropy.py
+
+python scripts_spectral_analysis/a1_prepare_df_frequencies_networks.py
+# python scripts_spectral_analysis/a2_prepare_df_bands_voxels.py
+python scripts_spectral_analysis/a3_prepare_df_bands_parcels.py
+python scripts_spectral_analysis/a4_prepare_df_entropy_parcels.py
+python scripts_spectral_analysis/a5_stats_perm_maxT.py
+python scripts_spectral_analysis/a6_produce_brain_maps.py
+
+# python scripts_connectivity/c1_compute_connectome_parcels.py
+python scripts_connectivity/c2_prepare_df_bands.py
+python scripts_connectivity/c3_prepare_df_bands_networks.py
