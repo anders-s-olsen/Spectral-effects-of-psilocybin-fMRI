@@ -92,3 +92,32 @@ If desired:
 
 ```bash
 pip install -e .
+```
+
+## Data Availability
+
+The data required to run these scripts are not included in this repository.
+
+This includes (but is not limited to):
+
+- Raw and preprocessed fMRI data
+- Confound regressors
+- Intermediate outputs stored in the data/ directory
+
+Access to these data is subject to the policies described in the associated publication.
+
+## Reproducibility Notes
+Scripts are designed to be executed in sequence within each pipeline stage
+File paths and configurations are controlled via config.json
+Some statistical analyses rely on R scripts included in the repository
+
+## Citation
+
+If you use or refer to this code, please cite the preprint:
+
+https://www.biorxiv.org/content/10.64898/2026.04.09.717379v1
+
+## Disclaimer
+
+This repository is provided for methodological transparency only.
+It is not maintained as a general-purpose software package, and limited support should be expected.
