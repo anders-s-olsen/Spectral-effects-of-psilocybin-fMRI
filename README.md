@@ -11,12 +11,6 @@ This repository contains the analysis code used to investigate the spectral effe
 ⚠️ **Important:**  
 This repository is **not intended to function as a standalone toolbox**. The scripts depend on data that are **not included** (e.g., `data/` directory), and therefore cannot be executed directly without access to the original datasets and preprocessing outputs.
 
-## Purpose
-
-- Provide full methodological transparency for peer review and publication  
-- Document the computational workflow used in the study  
-- Enable qualified researchers to reproduce or adapt the analysis (given appropriate data access)  
-
 ## Workflow Summary
 
 The analysis pipeline consists of several major stages:
