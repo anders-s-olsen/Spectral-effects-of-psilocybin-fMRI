@@ -8,6 +8,7 @@ if(length(new.packages)) install.packages(new.packages)
 library("nlme")
 library("parallel")
 library("tictoc")
+library("emmeans")
 
 setwd("/indirect/staff/anderssolsen/p3_spectral")
 source("spectral_analysis/scripts_spectral_analysis/Rfunction_permlme.R")
@@ -27,7 +28,7 @@ source("spectral_analysis/scripts_spectral_analysis/Rfunction_permlme.R")
 # the latter being an implementation of Lee2012 (Biometrics).
 # dtk is the subset of data for a given k
 
-LRTapply <- function(x, df_reduced, controlled_variable, n_obs, e_lmeH0, e_lmeH1){
+LRTapply <- function(x, df_reduced, controlled_variable, n_obs, e_lmeH0, e_lmeH1, random_formula){
   index.perm <- sample(1:n_obs)
   # index.perm <- n_obs:1
   k <- length(unique(df_reduced[[controlled_variable]]))
@@ -39,7 +40,7 @@ LRTapply <- function(x, df_reduced, controlled_variable, n_obs, e_lmeH0, e_lmeH1
     df_reduced_controlled <- df_reduced[df_reduced[[controlled_variable]] == controlled, ]
     
     LRT[i] <- permlme_function(
-      e_lmeH0[[i]], e_lmeH1[[i]], data=df_reduced_controlled, index.perm=index.perm
+      e_lmeH0[[i]], e_lmeH1[[i]], data=df_reduced_controlled, index.perm=index.perm, random_formula=random_formula
     )
   }
   # print LRT values for debugging
@@ -48,7 +49,7 @@ LRTapply <- function(x, df_reduced, controlled_variable, n_obs, e_lmeH0, e_lmeH1
 }
 
 main <- function(df, target_variable, covariates, nuisance_regressors,
-                 uncontrolled_variable, controlled_variable,
+                 uncontrolled_variable, controlled_variable, re_formula,
                  nperm = NULL) {
   outdf <- data.frame(
     covariate = character(),
@@ -60,8 +61,15 @@ main <- function(df, target_variable, covariates, nuisance_regressors,
     coefCIcovariatehigh = numeric(),
     pval = numeric(),
     pval_perm = numeric(),
+    r = numeric(),
+    ci_r1 = numeric(),
+    ci_r2 = numeric(),
+    pred_0_00 = numeric(),
+    pred_0_01 = numeric(),
+    pred_0_02 = numeric(),
     stringsAsFactors = FALSE
   )
+  random_formula <- as.formula(paste("~", re_formula, "| subject"))
   # loop through nuisance regressors and rescale
   for (nuisance in nuisance_regressors){
     # if nuisance is not numeric, skip
@@ -102,7 +110,7 @@ main <- function(df, target_variable, covariates, nuisance_regressors,
       perm_p = as.list(1:k)
       
       for (i in 1:k) {
-        message(" Controlled variable level: ", i, " of ", k)
+        # message(" Controlled variable level: ", i, " of ", k)
         controlled <- unique(df_reduced[[controlled_variable]])[i]
         df_reduced_controlled <- df_reduced[df_reduced[[controlled_variable]] == controlled, ]
         
@@ -110,11 +118,12 @@ main <- function(df, target_variable, covariates, nuisance_regressors,
         # message(n_obs)
         
         # Compute initial model
-        e_lmeH0[[i]] <- try(nlme::lme(as.formula(formula1), random =~1|subject, data = df_reduced_controlled, method="ML"), silent = TRUE)
-        e_lmeH1[[i]] <- try(nlme::lme(as.formula(formula2), random =~1|subject, data = df_reduced_controlled, method="ML"), silent = TRUE)
+        e_lmeH0[[i]] <- try(nlme::lme(as.formula(formula1), random =random_formula, data = df_reduced_controlled, method="ML"), silent = TRUE)
+        e_lmeH1[[i]] <- try(nlme::lme(as.formula(formula2), random =random_formula, data = df_reduced_controlled, method="ML"), silent = TRUE)
+        
         
         if(inherits(e_lmeH0[[i]], "try-error") || inherits(e_lmeH1[[i]], "try-error")){
-          # browser()
+          browser()
           LRT_init[[i]] <- NA
           pval_init[[i]] = NA
           next
@@ -128,18 +137,20 @@ main <- function(df, target_variable, covariates, nuisance_regressors,
       if (nperm > 1){
         message("Running permutation testing with nperm = ", nperm)
         # browser()
-        LRT_list = mclapply(1:nperm,LRTapply,df_reduced=df_reduced, controlled_variable=controlled_variable, n_obs=n_obs,e_lmeH0=e_lmeH0,e_lmeH1=e_lmeH1,mc.cores=8)
-        # LRT_list = LRTapply(x=1,df_reduced=df_reduced, controlled_variable=controlled_variable, n_obs=n_obs,e_lmeH0=e_lmeH0,e_lmeH1=e_lmeH1)
+        LRT_list = mclapply(1:nperm,LRTapply,df_reduced=df_reduced, controlled_variable=controlled_variable, n_obs=n_obs,e_lmeH0=e_lmeH0,e_lmeH1=e_lmeH1,random_formula=random_formula,mc.cores=8)
+        # LRT_list = LRTapply(x=1,df_reduced=df_reduced, controlled_variable=controlled_variable, n_obs=n_obs,e_lmeH0=e_lmeH0,e_lmeH1=e_lmeH1,random_formula=random_formula)
         message("Permutation testing done, processing results")
         LRT_matrix = matrix(unlist(LRT_list),ncol=k,byrow=TRUE)
         # Find max statistic per permutation
         LRTmax <- apply(LRT_matrix,1,max)
         LRTmax = LRTmax[!is.na(LRTmax)]
       }
+      # browser()
       
       # find permutation p-value and paste information into output dataframe
       for (i in 1:k) {
         controlled <- unique(df_reduced[[controlled_variable]])[i]
+        df_reduced_controlled <- df_reduced[df_reduced[[controlled_variable]] == controlled, ]
 
         if (nperm > 1){
           perm_p = sum(LRTmax>=LRT_init[[i]])/nperm
@@ -159,14 +170,36 @@ main <- function(df, target_variable, covariates, nuisance_regressors,
         }else{
           ci <- coefci$fixed[covariate, c(1, 3)]
         }
-        coef_intercept  = e_lmeH1[[i]]["coefficients"]$coefficients$fixed["(Intercept)"]
-        coef_covariate  = e_lmeH1[[i]]["coefficients"]$coefficients$fixed[covariate]
+        coef_intercept = e_lmeH1[[i]]["coefficients"]$coefficients$fixed["(Intercept)"]
+        coef_covariate = e_lmeH1[[i]]["coefficients"]$coefficients$fixed[covariate]
+        emmean <- as.data.frame(emmeans(e_lmeH1[[i]],~PPL_mcg_L,at=list(PPL_mcg_L = c(0, 10, 20))))$emmean
         }
+        
+        
+        # summary_fit <- summary(e_lmeH1[[i]])
+        # browser()
+        # 
+        # t_val <- summary_fit$tTable[covariate, "t-value"]
+        # df    <- summary_fit$tTable[covariate, "DF"]
+        # 
+        # r <- t_val / sqrt(t_val^2 + df)
+        # 
+        # z  <- atanh(r)
+        # se <- 1 / sqrt(df - 1)   # because df = n - k - 2 for partial r
+        # 
+        # ci_z <- z + c(-1, 1) * qnorm(0.975) * se
+        # ci_r <- tanh(ci_z)
+        # browser()
+        corr <- cor.test(resid(e_lmeH0[[i]],type="response"),df_reduced_controlled$PPL_mcg_L)
+        r <- corr$estimate
+        ci_r <- corr$conf.int
+        
         outdf[counter, ] <- list(
           covariate, uncontrolled, controlled,
           coef_intercept, coef_covariate,
           ci[1], ci[2],
-          pval_init[[i]], perm_p
+          pval_init[[i]], perm_p,r,ci_r[1],ci_r[2],
+          emmean[1],emmean[2],emmean[3]
         )
         
         counter = counter + 1

@@ -9,31 +9,32 @@ setwd("/indirect/staff/anderssolsen/p3_spectral")
 # Source the R function
 source("spectral_analysis/scripts_spectral_analysis/Rfunction_permmaxT.R")
 
-# Assume your R script defines: main <- function(df, target_variable, covariates, nuisance_regressors, uncontrolled_variable, controlled_variable, nperm) { ... }
-
 # Load configuration
 config <- fromJSON("config.json")
 
-denoising_strategies <- config$strategies
+# denoising_strategies <- config$strategies
+denoising_strategies <- c("9p")
 covariates <- config$covariates
 nuisance_regressors <- config$nuisance_regressors
 nuisance_regressors_nomotion <- config$nuisance_regressors_nomotion
+re_formula <- config$re_formula
   
-# Loop through permutation setting (only True in your Python code)
+# Loop through permutation setting
 for (do_perm in c(TRUE)) {
   if (do_perm) {
-    add_perm <- "_perm"
-    nperm <- config$num_permutations
+    add_perm <- "_perm" # suffix for output files when permutations are done
+    nperm <- 10#config$num_permutations
   } else {
     add_perm <- ""
     nperm <- 0
   }
   
+  # ######################## Run stats for log-power by frequency and network #########################
   # # Loop through strategies
   # for (strategy in denoising_strategies) {
-  #   if (!strategy %in% c('high-pass-only','high-pass-motion','acompcor','9p')) {
-  #     next
-  #   }
+  #   # if (!strategy %in% c('high-pass-only','high-pass-motion','acompcor','9p')) {
+  #   #   next
+  #   # }
   #   cat("Running stats for strategy:", strategy, "\n")
   #   #################### log-power, frequency, network #######################
   #   # Read data
@@ -64,84 +65,232 @@ for (do_perm in c(TRUE)) {
   #     nuisance_regressors,
   #     uncontrolled_variable,
   #     controlled_variable,
+  #     re_formula,
   #     nperm = nperm
   #   )
+  #   browser()
   # 
   #   # Save output
   #   out_path <- paste0("data/results/logpower_stats_by_frequency_network_", strategy, add_perm, ".csv")
   #   write_csv(result_r, out_path, na = "NaN")
   # 
-  #   # Call the R function 'main'
-  #   result_r <- main(
-  #     df_frequencies_networks,
-  #     target_variable,
-  #     covariates,
-  #     nuisance_regressors_nomotion,
-  #     uncontrolled_variable,
-  #     controlled_variable,
-  #     nperm = nperm
-  #   )
-  # 
-  #   # Save output
-  #   out_path <- paste0("data/results/logpower_stats_by_frequency_network_nomotion_", strategy, add_perm, ".csv")
-  #   write_csv(result_r, out_path, na = "NaN")
+  #   # # Call the R function 'main'
+  #   # result_r_nomotion <- main(
+  #   #   df_frequencies_networks,
+  #   #   target_variable,
+  #   #   covariates,
+  #   #   nuisance_regressors_nomotion,
+  #   #   uncontrolled_variable,
+  #   #   controlled_variable,
+  #   #   re_formula,
+  #   #   nperm = nperm
+  #   # )
+  #   #
+  #   # # Save output
+  #   # out_path <- paste0("data/results/logpower_stats_by_frequency_network_nomotion_", strategy, add_perm, ".csv")
+  #   # write_csv(result_r_nomotion, out_path, na = "NaN")
   # }
 
+  # ######################### Run stats for log-power by band and parcel#########################
+  # # Loop through strategies
+  # for (strategy in denoising_strategies) {
+  #   # if (!strategy %in% c('high-pass-only','high-pass-motion','acompcor','9p')) {
+  #   #   next
+  #   # }
+  #   cat("Running stats for strategy:", strategy, "\n")
+  #   #################### log-power, band, parcel #######################
+  #   # Read data
+  #   df_bands_parcels <- read_csv(
+  #     paste0("data/results/spectra_by_band_parcel_", strategy, ".csv")
+  #   )
+  # 
+  #   # Rename column if needed
+  #   if ("PPL_mcg/L" %in% names(df_bands_parcels)) {
+  #     df_bands_parcels <- df_bands_parcels %>%
+  #       rename(PPL_mcg_L = `PPL_mcg/L`)
+  #   }
+  #   # rename "ratio_outliers_fd0.5_std_dvars1000" to "ratio_outliers_fd0_5_std_dvars1000" if needed
+  #   if ("ratio_outliers_fd0.5_std_dvars1000" %in% names(df_bands_parcels)) {
+  #     df_bands_parcels <- df_bands_parcels %>%
+  #       rename(ratio_outliers_fd0_5_std_dvars1000 = `ratio_outliers_fd0.5_std_dvars1000`)
+  #   }
+  # 
+  #   target_variable <- config$target_variable
+  #   uncontrolled_variable <- "band"
+  #   controlled_variable <- "roi"
+  # 
+  #   # Call the R function 'main'
+  #   result_r <- main(
+  #     df_bands_parcels,
+  #     target_variable,
+  #     covariates,
+  #     nuisance_regressors,
+  #     uncontrolled_variable,
+  #     controlled_variable,
+  #     re_formula,
+  #     nperm = nperm
+  #   )
+  #   browser()
+  # 
+  #   # Save output
+  #   out_path <- paste0("data/results/logpower_stats_by_band_parcel_", strategy, add_perm, ".csv")
+  #   write_csv(result_r, out_path, na = "NaN")
+  # 
+  #   # # Call the R function 'main'
+  #   # result_r_nomotion <- main(
+  #   #   df_bands_parcels,
+  #   #   target_variable,
+  #   #   covariates,
+  #   #   nuisance_regressors_nomotion,
+  #   #   uncontrolled_variable,
+  #   #   controlled_variable,
+  #   #   re_formula,
+  #   #   nperm = nperm
+  #   # )
+  #   #
+  #   # # Save output
+  #   # out_path <- paste0("data/results/logpower_stats_by_band_parcel_nomotion_", strategy, add_perm, ".csv")
+  #   # write_csv(result_r_nomotion, out_path, na = "NaN")
+  # }
+
+  # ########################### Run stats for entropy by parcel #########################
+  # # Loop through strategies
+  # for (strategy in denoising_strategies) {
+  #   # if (!strategy %in% c('high-pass-only','high-pass-motion','acompcor','9p')) {
+  #   #   next
+  #   # }
+  #   cat("Running stats for strategy:", strategy, "\n")
+  #   #################### entropy, parcel #######################
+  #   # Read data
+  #   df_entropy <- read_csv(
+  #     paste0("data/results/entropy_by_parcel_", strategy, ".csv")
+  #   )
+  #   df_entropy$ones <- 1  # add a column of ones for uncontrolled variable
+  # 
+  #   # Rename column if needed
+  #   if ("PPL_mcg/L" %in% names(df_entropy)) {
+  #     df_entropy <- df_entropy %>%
+  #       rename(PPL_mcg_L = `PPL_mcg/L`)
+  #   }
+  #   # rename "ratio_outliers_fd0.5_std_dvars1000" to "ratio_outliers_fd0_5_std_dvars1000" if needed
+  #   if ("ratio_outliers_fd0.5_std_dvars1000" %in% names(df_entropy)) {
+  #     df_entropy <- df_entropy %>%
+  #       rename(ratio_outliers_fd0_5_std_dvars1000 = `ratio_outliers_fd0.5_std_dvars1000`)
+  #   }
+  # 
+  #   target_variable <- "entropy"
+  #   uncontrolled_variable <- "ones"
+  #   controlled_variable <- "roi"
+  # 
+  #   # Call the R function 'main'
+  #   result_r <- main(
+  #     df_entropy,
+  #     target_variable,
+  #     covariates,
+  #     nuisance_regressors,
+  #     uncontrolled_variable,
+  #     controlled_variable,
+  #     re_formula,
+  #     nperm = nperm
+  #   )
+  #   browser()
+  # 
+  #   # Save output
+  #   out_path <- paste0("data/results/entropy_stats_by_parcel_", strategy, add_perm, ".csv")
+  #   write_csv(result_r, out_path, na = "NaN")
+  # 
+  #   # # Call the R function 'main'
+  #   # result_r_nomotion <- main(
+  #   #   df_entropy,
+  #   #   target_variable,
+  #   #   covariates,
+  #   #   nuisance_regressors_nomotion,
+  #   #   uncontrolled_variable,
+  #   #   controlled_variable,
+  #   #   re_formula,
+  #   #   nperm = nperm
+  #   # )
+  #   #
+  #   # # Save output
+  #   # out_path <- paste0("data/results/entropy_stats_by_parcel_nomotion_", strategy, add_perm, ".csv")
+  #   # write_csv(result_r_nomotion, out_path, na = "NaN")
+  # }
+  # ########################### Run stats for GED eigenvalues by frequency #########################
+  # # Loop through strategies
+  # for (strategy in denoising_strategies) {
+  #   # if (!strategy %in% c('high-pass-only','high-pass-motion','acompcor','9p')) {
+  #   #   next
+  #   # }
+  #   cat("Running stats for strategy:", strategy, "\n")
+  #   #################### entropy, parcel #######################
+  #   # Read data
+  #   df_entropy <- read_csv(
+  #     paste0("data/results/ged_by_frequency_eigenvector_", strategy, ".csv")
+  #   )
+  #   # df_entropy$ones <- 1  # add a column of ones for uncontrolled variable
+  # 
+  #   # Rename column if needed
+  #   if ("PPL_mcg/L" %in% names(df_entropy)) {
+  #     df_entropy <- df_entropy %>%
+  #       rename(PPL_mcg_L = `PPL_mcg/L`)
+  #   }
+  #   # rename "ratio_outliers_fd0.5_std_dvars1000" to "ratio_outliers_fd0_5_std_dvars1000" if needed
+  #   if ("ratio_outliers_fd0.5_std_dvars1000" %in% names(df_entropy)) {
+  #     df_entropy <- df_entropy %>%
+  #       rename(ratio_outliers_fd0_5_std_dvars1000 = `ratio_outliers_fd0.5_std_dvars1000`)
+  #   }
+  # 
+  #   # browser()
+  # 
+  #   target_variable <- "eigenvalue"
+  #   uncontrolled_variable <- "eigenvector"
+  #   controlled_variable <- "frequency"
+  # 
+  #   # Call the R function 'main'
+  #   result_r <- main(
+  #     df_entropy,
+  #     target_variable,
+  #     covariates,
+  #     nuisance_regressors,
+  #     uncontrolled_variable,
+  #     controlled_variable,
+  #     re_formula,
+  #     nperm = nperm
+  #   )
+  #   browser()
+  # 
+  #   # Save output
+  #   out_path <- paste0("data/results/ged_stats_by_frequency_eigenvector_", strategy, add_perm, ".csv")
+  #   write_csv(result_r, out_path, na = "NaN")
+  # 
+  #   # # Call the R function 'main'
+  #   # result_r_nomotion <- main(
+  #   #   df_entropy,
+  #   #   target_variable,
+  #   #   covariates,
+  #   #   nuisance_regressors_nomotion,
+  #   #   uncontrolled_variable,
+  #   #   controlled_variable,
+  #   #   re_formula,
+  #   #   nperm = nperm
+  #   # )
+  #   #
+  #   # # Save output
+  #   # out_path <- paste0("data/results/ged_stats_by_frequency_eigenvector_nomotion_", strategy, add_perm, ".csv")
+  #   # write_csv(result_r_nomotion, out_path, na = "NaN")
+  # }
+  ########################### Run stats for GED rayleigh by frequency #########################
   # Loop through strategies
   for (strategy in denoising_strategies) {
-    if (!strategy %in% c('high-pass-only','high-pass-motion','acompcor','9p')) {
-      next
-    }
-    cat("Running stats for strategy:", strategy, "\n")
-    #################### log-power, band, parcel #######################
-    # Read data
-    df_bands_parcels <- read_csv(
-      paste0("data/results/spectra_by_band_parcel_", strategy, ".csv")
-    )
-
-    # Rename column if needed
-    if ("PPL_mcg/L" %in% names(df_bands_parcels)) {
-      df_bands_parcels <- df_bands_parcels %>%
-        rename(PPL_mcg_L = `PPL_mcg/L`)
-    }
-    # rename "ratio_outliers_fd0.5_std_dvars1000" to "ratio_outliers_fd0_5_std_dvars1000" if needed
-    if ("ratio_outliers_fd0.5_std_dvars1000" %in% names(df_bands_parcels)) {
-      df_bands_parcels <- df_bands_parcels %>%
-        rename(ratio_outliers_fd0_5_std_dvars1000 = `ratio_outliers_fd0.5_std_dvars1000`)
-    }
-
-    target_variable <- config$target_variable
-    uncontrolled_variable <- "band"
-    controlled_variable <- "roi"
-
-    # Call the R function 'main'
-    result_r <- main(
-      df_bands_parcels,
-      target_variable,
-      covariates,
-      nuisance_regressors,
-      uncontrolled_variable,
-      controlled_variable,
-      nperm = nperm
-    )
-
-    # Save output
-    out_path <- paste0("data/results/logpower_stats_by_band_parcel_", strategy, add_perm, ".csv")
-    write_csv(result_r, out_path, na = "NaN")
-  }
-
-  # Loop through strategies
-  for (strategy in denoising_strategies) {
-    if (!strategy %in% c('high-pass-only','high-pass-motion','acompcor','9p')) {
+    if (!strategy %in% c('9p')) {
       next
     }
     cat("Running stats for strategy:", strategy, "\n")
     #################### entropy, parcel #######################
     # Read data
     df_entropy <- read_csv(
-      paste0("data/results/entropy_by_parcel_", strategy, ".csv")
+      paste0("data/results/ged_rayleigh_", strategy, ".csv")
     )
-    df_entropy$ones <- 1  # add a column of ones for uncontrolled variable
 
     # Rename column if needed
     if ("PPL_mcg/L" %in% names(df_entropy)) {
@@ -154,9 +303,9 @@ for (do_perm in c(TRUE)) {
         rename(ratio_outliers_fd0_5_std_dvars1000 = `ratio_outliers_fd0.5_std_dvars1000`)
     }
 
-    target_variable <- "entropy"
-    uncontrolled_variable <- "ones"
-    controlled_variable <- "roi"
+    target_variable <- "rayleigh"
+    uncontrolled_variable <- "eigenvector"
+    controlled_variable <- "frequency"
 
     # Call the R function 'main'
     result_r <- main(
@@ -166,11 +315,29 @@ for (do_perm in c(TRUE)) {
       nuisance_regressors,
       uncontrolled_variable,
       controlled_variable,
+      re_formula,
       nperm = nperm
     )
+    browser()
 
     # Save output
-    out_path <- paste0("data/results/entropy_stats_by_parcel_", strategy, add_perm, ".csv")
+    out_path <- paste0("data/results/ged_stats_rayleigh_", strategy, add_perm, ".csv")
     write_csv(result_r, out_path, na = "NaN")
+
+    # # Call the R function 'main'
+    # result_r_nomotion <- main(
+    #   df_entropy,
+    #   target_variable,
+    #   covariates,
+    #   nuisance_regressors_nomotion,
+    #   uncontrolled_variable,
+    #   controlled_variable,
+    #   re_formula,
+    #   nperm = nperm
+    # )
+    #
+    # # Save output
+    # out_path <- paste0("data/results/ged_stats_rayleigh_nomotion_", strategy, add_perm, ".csv")
+    # write_csv(result_r_nomotion, out_path, na = "NaN")
   }
 }

@@ -31,9 +31,9 @@ def spectral_entropy(df, denoising_strategy, downsample_mr001=False):
         try:
             spectrum_file = os.path.join(spectrum_dir, os.path.basename(scan['preproc_filename_cifti']).replace('.dtseries.nii', add_downsampled_label+'_mtspectra.dtseries.nii'))
             # check if the output file already exists because this can take a long time
-            if os.path.exists(spectrum_file.replace('.dtseries.nii', '_entropy.dscalar.nii')):
-                print(f"Output file already exists for scan {os.path.basename(scan['preproc_filename_cifti'])}, skipping")
-                continue
+            # if os.path.exists(spectrum_file.replace('.dtseries.nii', '_entropy.dscalar.nii')):
+            #     print(f"Output file already exists for scan {os.path.basename(scan['preproc_filename_cifti'])}, skipping")
+            #     continue
             img = nib.load(spectrum_file)
         except:
             print(f"Scan {scan['preproc_filename_cifti']} does not exist, skipping")
@@ -50,7 +50,7 @@ def spectral_entropy(df, denoising_strategy, downsample_mr001=False):
         # dead voxels set to nan
         data[:,(data**2).sum(axis=0) == 0] = np.nan
         # compute spectral entropy (Shannon entropy) between 0.01-0.2Hz
-        freq_mask = (frequencies >= 0.01) & (frequencies <= 0.2)
+        freq_mask = (frequencies >= config['min_statistics_frequency']) & (frequencies <= config['max_statistics_frequency'])
         data_masked = data[freq_mask, :]
         data_masked_norm = data_masked / np.nansum(data_masked, axis=0)  # normalize to sum to 1
 
@@ -74,6 +74,8 @@ if __name__ == "__main__":
     # Load the DataFrame containing scan information
     df = pd.read_csv('data/func_scans_table_outliers_ses-PSI_PPLSDI.csv')
     df = df[df['task']==config["task"]]
+    df = df[df['include_manual_qc']]
+    df = df[df['include_scan_coil_numvols']]
 
     downsample_mr001 = False
 

@@ -4,6 +4,7 @@ import pandas as pd
 import json
 import re
 import nibabel as nib
+import pydicom
 
 def make_table_of_func_scans(scan_dir, derivatives_dir):
     """
@@ -23,15 +24,16 @@ def make_table_of_func_scans(scan_dir, derivatives_dir):
     subjects.sort()  # sort subjects for consistent order
     # keep only directories, not files
     subjects = [s for s in subjects if os.path.isdir(s)]
-    ppl_sdi = pd.read_excel('data/SDI_PPL_P3_20220202.xlsx')
+    # ppl_sdi = pd.read_excel('data/SDI_PPL_P3_20220202.xlsx')
+    mrids = pd.read_csv('data/raw/code/spreadsheets/NeuroPharm2-P3-MR_bidsdata_path.csv')
     scans_collector = []
     for subject in subjects:
         print(f"Processing subject: {os.path.basename(subject)}")
-        ppl_sdi_subject = ppl_sdi[ppl_sdi['CIMBI.ID'] == int(os.path.basename(subject)[4:])]
-        if int(os.path.basename(subject)[4:]) in [56133, 56314, 56729, 57219]:
-            date = '1999-12-31'  # missing date, set to a dummy date
-        else:
-            date = pd.to_datetime(ppl_sdi_subject['MR_scan_date']).iloc[0].date().isoformat()
+        # ppl_sdi_subject = ppl_sdi[ppl_sdi['CIMBI.ID'] == int(os.path.basename(subject)[4:])]
+        # if int(os.path.basename(subject)[4:]) in [56133, 56314, 56729, 57219]:
+        #     date = '1999-12-31'  # missing date, set to a dummy date
+        # else:
+        #     date = pd.to_datetime(ppl_sdi_subject['MR_scan_date']).iloc[0].date().isoformat()
         sessions = glob(os.path.join(subject, 'ses-*'))
         sessions.sort()  # sort sessions for consistent order
         if not sessions:
@@ -56,6 +58,7 @@ def make_table_of_func_scans(scan_dir, derivatives_dir):
                 task = 'task-' + os.path.basename(scan).split('task-')[1].split('_acq')[0]
                 run = 'run-' + os.path.basename(scan).split('run-')[1].split('_')[0]
                 ped = 'dir-' + os.path.basename(scan).split('dir-')[1].split('_')[0]
+                cimbi = int(os.path.basename(subject)[4:])
                 
                 json_file_preproc = scan.replace('_bold.nii.gz', '_bold.json')
                 with open(json_file_preproc, 'r') as f:
@@ -73,18 +76,56 @@ def make_table_of_func_scans(scan_dir, derivatives_dir):
                 if not os.path.exists(raw_source_file):
                     raise ValueError(f"Warning: Raw source file {raw_source_file} does not exist for scan {os.path.basename(scan)}")
                     
-
                 json_file_raw = raw_source_file.replace('.nii.gz', '.json')
                 with open(json_file_raw, 'r') as f:
                     metadata_raw = json.load(f)
+                
+                generatedfrom = metadata_raw.get('generatedfrom', 'N/A')
+                mrids_subses = mrids[(mrids['CIMBI'] == cimbi) & (mrids['source'].apply(lambda x: os.path.basename(x[:-5])) == os.path.basename(session))]
+                ses_ids = mrids_subses[['MRid_1', 'MRid_2', 'MRid_3']].values.flatten()
+                ses_ids = [x for x in ses_ids if pd.notna(x)]
+
+                if os.path.basename(subject)=='sub-56118' and os.path.basename(session)=='ses-KET' and task=='task-rest' and run=='run-1':
+                    ses_ids = [ses_ids[0]]
+                elif os.path.basename(subject)=='sub-56118' and os.path.basename(session)=='ses-KET' and task=='task-rest' and run=='run-2':
+                    ses_ids = [ses_ids[1]]
+                elif os.path.basename(subject)=='sub-56017' and os.path.basename(session)=='ses-BL' and task=='task-aarhusmusic' and run=='run-1':
+                    ses_ids = ['n0028'] # not n0027 for some reason...
+                    
+                already_used = False
+                date = None
+                for raw_id in ses_ids:
+                    if 'p' in raw_id:
+                        # find the path
+                        rawpath = glob('/rawdata/mr-rh/MRraw/prisma/'+raw_id+'*')[0]
+                    elif 'n' in raw_id:
+                        rawpath = glob('/rawdata/mr-rh/MRraw/mr001/'+raw_id+'*')[0]
+                    # check if generatedfrom is a subfolder of 'path'
+                    folders = glob(os.path.join(rawpath, '*'))
+                    if any(generatedfrom in folder for folder in folders):
+                        if already_used:
+                            raise ValueError(f"Warning: Scan {os.path.basename(scan)} has multiple matching raw sources: {sources}")
+                        match = rawpath+'/'+generatedfrom
+                        anyfile = glob(match+'/*')
+                        dicom = pydicom.dcmread(anyfile[0], stop_before_pixels=True)
+                        try:
+                            date = dicom.AcquisitionDate
+                        except:
+                            date = dicom.StudyDate
+                        already_used = True
+                        raw_id_used = raw_id
+                if date is None:
+                    print(f"Warning: Scan {os.path.basename(scan)} has no matching raw source found in the spreadsheet")
+                    continue
+
                 acquisition_time = metadata_raw.get('AcquisitionTime', 'N/A')
                 
-                if os.path.basename(subject) == 'sub-56145' and os.path.basename(session) == 'ses-PSI':
-                    # set the date to october 30th 2018
-                    if pd.to_datetime(acquisition_time).hour < 8:
-                        date = '2018-10-31'
-                    else:
-                        date = '2018-10-30'
+                # if os.path.basename(subject) == 'sub-56145' and os.path.basename(session) == 'ses-PSI':
+                #     # set the date to october 30th 2018
+                #     if pd.to_datetime(acquisition_time).hour < 8:
+                #         date = '2018-10-31'
+                #     else:
+                #         date = '2018-10-30'
                 # else:
                     # date = scan_row['acq_time'].item()[:10]
                 timestamp = pd.to_datetime(date + ' ' + acquisition_time)
@@ -142,6 +183,7 @@ def make_table_of_func_scans(scan_dir, derivatives_dir):
 
                 scans_collector.append({
                     'subject': os.path.basename(subject),
+                    'raw_id': raw_id_used,
                     'session': os.path.basename(session),
                     'task': task,
                     'run': run,
@@ -168,6 +210,9 @@ def make_table_of_func_scans(scan_dir, derivatives_dir):
     # manual discarding of some scans, only those that are not just ordinary motion
     df['include_manual_qc'] = True
 
+    # set all scans without ses-PSI to include_manual_qc False, as we only want to include scans from ses-PSI in the spectral analysis
+    # df.loc[df['session'] != 'ses-PSI', 'include_manual_qc'] = None
+
     # three scans for sub-55746 have some weird oscillatory noise in the data at some sections
     df.loc[(df['subject'] == 'sub-55746') & (df['session'] == 'ses-PSI') & (df['task'] == 'task-rest') & (df['run'] == 'run-1'), 'include_manual_qc'] = False
     df.loc[(df['subject'] == 'sub-55746') & (df['session'] == 'ses-PSI') & (df['task'] == 'task-rest') & (df['run'] == 'run-2'), 'include_manual_qc'] = False
@@ -188,7 +233,7 @@ if __name__ == "__main__":
     import os
 
     # delete existing files to avoid appending to them
-    existing_files = glob('data/*.csv')
+    existing_files = glob('data/func_scans*.csv')
     for file in existing_files:
         os.remove(file)
 

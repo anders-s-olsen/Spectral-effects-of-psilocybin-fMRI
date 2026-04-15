@@ -32,53 +32,69 @@ def extract_confounds_append_outliers(df, denoising_strategy, fd_threshold=None,
                 fd_threshold=fd_threshold, 
                 std_dvars_threshold=std_dvars_threshold,
                 scrub=0) # no scrubbing, just get outliers
-        elif 'acompcor' in denoising_strategy:
-            confounds = nilearn.interfaces.fmriprep.load_confounds(
-                preprocessed_scans,
-                strategy=('motion','compcor','high_pass'), #highpass must be included for aCompCor
-                motion='derivatives', #full=motion24, derivaties=muschelli2014 (12p)
-                compcor='anat_separated', # [Muschelli2014]
-                n_compcor=5,
-                demean=False)
+        # elif 'acompcor' in denoising_strategy:
+        #     confounds = nilearn.interfaces.fmriprep.load_confounds(
+        #         preprocessed_scans,
+        #         strategy=('motion','compcor','high_pass'), #highpass must be included for aCompCor
+        #         motion='derivatives', #full=motion24, derivaties=muschelli2014 (12p)
+        #         compcor='anat_separated', # [Muschelli2014]
+        #         n_compcor=5,
+        #         demean=False)
         elif '9p' in denoising_strategy:
             confounds = nilearn.interfaces.fmriprep.load_confounds(
                 preprocessed_scans,
-                strategy=('motion','wm_csf','global_signal','high_pass'), 
+                strategy=('motion','wm_csf','global_signal'), 
                 motion='basic', #basic=6p
                 wm_csf='basic', # basic=mean WM, mean CSF
                 global_signal='basic', # basic=mean global signal
                 demean=False)  
+        elif '36p' in denoising_strategy:
+            confounds = nilearn.interfaces.fmriprep.load_confounds(
+                preprocessed_scans,
+                strategy=('motion','wm_csf','global_signal'), 
+                motion='full', #full=34p
+                wm_csf='full', # basic=mean WM, mean CSF
+                global_signal='full', # basic=mean global signal
+                demean=False)  
         elif denoising_strategy == 'ica-aroma':
             confounds = nilearn.interfaces.fmriprep.load_confounds(
                 preprocessed_scans,
-                strategy=('ica_aroma','wm_csf','high_pass'), 
+                strategy=('ica_aroma','wm_csf'), 
                 ica_aroma='full', # use fMRIPrep output ~desc-smoothAROMAnonaggr_bold.nii.gz.
                 wm_csf='basic', # basic=mean WM, mean CSF
                 demean=False)  
         elif denoising_strategy == 'ica-aroma-gsr':
             confounds = nilearn.interfaces.fmriprep.load_confounds(
                 preprocessed_scans,
-                strategy=('ica_aroma','wm_csf','global_signal','high_pass'), 
+                strategy=('ica_aroma','wm_csf','global_signal'), 
                 ica_aroma='full', # use fMRIPrep output ~desc-smoothAROMAnonaggr_bold.nii.gz.
                 wm_csf='basic', # basic=mean WM, mean CSF
                 global_signal='basic', # basic=mean global signal
                 demean=False) 
-        elif denoising_strategy == 'high-pass-only':
+        elif denoising_strategy == 'motion-only':
             confounds = nilearn.interfaces.fmriprep.load_confounds(
                 preprocessed_scans,
-                strategy=('high_pass',), 
+                strategy=('motion',), 
+                motion='basic', #basic=6p
                 demean=False)
-        elif denoising_strategy == 'high-pass-motion':
-            confounds = nilearn.interfaces.fmriprep.load_confounds(
-                preprocessed_scans,
-                strategy=('high_pass','motion'), 
-                motion='derivatives', #full=motion24, derivaties=muschelli2014 (12p)
-                demean=False)
+        elif denoising_strategy == 'no_denoising':
+            continue
+        # elif denoising_strategy == 'high-pass-only':
+        #     confounds = nilearn.interfaces.fmriprep.load_confounds(
+        #         preprocessed_scans,
+        #         strategy=('high_pass',), 
+        #         demean=False)
+        # elif denoising_strategy == 'high-pass-motion':
+        #     confounds = nilearn.interfaces.fmriprep.load_confounds(
+        #         preprocessed_scans,
+        #         strategy=('high_pass','motion'), 
+        #         motion='derivatives', #full=motion24, derivaties=muschelli2014 (12p)
+        #         demean=False)
         else:
             raise ValueError(f"Unknown strategy: {denoising_strategy}") 
 
         for i,scan in enumerate(preprocessed_scans):
-            confounds_file_orig = nilearn.interfaces.fmriprep.load_confounds_utils.get_confounds_file(scan,flag_full_aroma=False) 
+            confounds_file_orig = nilearn.interfaces.fmriprep.load_confounds_utils.get_confounds_file(scan,flag_full_aroma=False, flag_tedana=False) 
             if denoising_strategy == 'save-outliers-in-table-only':
                 confounds_file = pd.read_csv(confounds_file_orig, sep='\t')
                 fd = confounds_file['framewise_displacement'].values
@@ -117,7 +133,6 @@ def extract_confounds_append_outliers(df, denoising_strategy, fd_threshold=None,
                 
             else:
                 # Save the updated confounds DataFrame to a new CSV file
-                
                 if spike_regression:   
                     output_file = confounds_file_orig.replace('preprocessed','interim/confounds_'+denoising_strategy+'_spike_regression_fd'+str(fd_threshold)+'_std_dvars'+str(std_dvars_threshold)).replace('.tsv', '_filtered.tsv')
                 else:
@@ -149,8 +164,9 @@ if __name__ == "__main__":
         df = pd.read_csv('data/func_scans_table.csv')
 
     for denoising_strategy in strategies:
-        # if denoising_strategy != 'save-outliers-in-table-only':
-        #     continue
+        if denoising_strategy not in ['save-outliers-in-table-only']:
+        # if denoising_strategy == 'save-outliers-in-table-only':
+            continue
         print(f"Extracting confounds and appending outliers for strategy: {denoising_strategy}")
 
         if spike_regression:

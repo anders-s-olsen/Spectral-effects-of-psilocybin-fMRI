@@ -2,7 +2,7 @@
 # Implementation of max-T permutation testing
 #
 # Neurobiology research unit, 2021-2022
-permlme_function <- function(lme0.ML, lme1.ML, data = NULL, index.perm = NULL){ 
+permlme_function <- function(lme0.ML, lme1.ML, data = NULL, index.perm = NULL, random_formula = NULL){ 
   
   
   ## ** 1- extract key quantities from input
@@ -29,7 +29,7 @@ permlme_function <- function(lme0.ML, lme1.ML, data = NULL, index.perm = NULL){
   sqrtOmega0M1 <- lapply(sqrtOmega0,solve)
   
   residuals0N <- vector(length=n.obs, mode = "numeric")
-  for(isubject in 1:n_subject){ ## isubject <- 1
+  for(isubject in 1:n_subject){
     residuals0N[index_subject[[isubject]]] <- sqrtOmega0M1[[isubject]] %*% residuals0[index_subject[[isubject]]]
   }
   
@@ -54,6 +54,7 @@ permlme_function <- function(lme0.ML, lme1.ML, data = NULL, index.perm = NULL){
   # }
   
   # compute new models using permuted observations
+  # browser()
   formula1 <- formula(lme0.ML)
   formula2 <- formula(lme1.ML)
   lme0.permML <- try(update(lme0.ML, data = data.perm, method = "ML"), silent = TRUE)

@@ -22,7 +22,7 @@ def compute_spectra(df,denoising_strategy, downsample_mr001=False):
             output_dir = 'data/spectra/'+denoising_strategy+'/' + scan.subject + '/' + scan.session + '/func/'
             if os.path.exists(output_dir+ os.path.basename(scan['preproc_filename_cifti']).replace('.dtseries.nii', add_downsampled_label+'_mtspectra.dtseries.nii')):
                 print(f"Output file already exists for scan {os.path.basename(scan['preproc_filename_cifti'])}, skipping")
-                continue
+                # continue
             print(f"Processing scan: {scan.subject} {scan.session} {scan.task} {scan.run}")
             img_file = os.path.join(denoised_dir, os.path.basename(scan['preproc_filename_cifti']).replace('.dtseries.nii', '_denoised.dtseries.nii'))
             img = nib.load(img_file)
@@ -62,9 +62,12 @@ def compute_spectra(df,denoising_strategy, downsample_mr001=False):
             NFFT = 400
             TR = 0.8
 
+        # we set NW=2, because the lowest practical frequency we can reliably estimate with 300s sequences
+        # is NW/T = 2/300 = 0.0067 Hz, which is close to the lowest frequency we want to assess (0.01 Hz)
+        # NW=4 would be too high for the 5-min sequences. 
         f, psd_mt, _ = tsa.multi_taper_psd(data.T, #assumes data is space x time
                                             Fs=1/TR,
-                                            NW=None, # defaults to 4, which means 8 tapers
+                                            NW=3, # defaults to 4, which means 7 tapers
                                             BW=None, # defaults to None
                                             adaptive=False, # adaptive weighting of tapers, could be used (slow)
                                             jackknife=False, # jackknife estimation of variance, which we don't assess
@@ -106,10 +109,15 @@ if __name__ == "__main__":
     df = df[df['task']==config["task"]]
     df = df[df['include_manual_qc']]
     df = df[df['include_scan_coil_numvols']]
+    
 
     downsample_mr001 = False
     
     # Compute spectra
     for denoising_strategy in strategies:
+        if denoising_strategy not in ['9p']:
+            continue
+        # if denoising_strategy in ['ica-aroma','ica-aroma-gsr']:
+        #     continue
         print(f"Computing spectra for denoising strategy: {denoising_strategy}")
         compute_spectra(df, denoising_strategy, downsample_mr001=downsample_mr001)

@@ -20,7 +20,7 @@ def compute_spectra(df, downsample_mr001=False):
         output_dir = 'data/spectra/motion/' + scan.subject + '/' + scan.session + '/func/'
         
         try:
-            confounds_file_orig = nilearn.interfaces.fmriprep.load_confounds_utils.get_confounds_file(scan['preproc_filename_cifti'], flag_full_aroma=False)
+            confounds_file_orig = nilearn.interfaces.fmriprep.load_confounds_utils.get_confounds_file(scan['preproc_filename_cifti'], flag_full_aroma=False, flag_tedana=False)
         except:
             print(f"Scan {scan['preproc_filename_cifti']} does not exist, skipping")
             continue
@@ -39,7 +39,7 @@ def compute_spectra(df, downsample_mr001=False):
                                 t_r=scan.tr,
                                 filter=False,
                                 detrend=True,
-                                standardize=False,
+                                standardize=config["standardize"],
                                 standardize_confounds=True,
                                 ensure_finite=True) 
         
@@ -66,7 +66,7 @@ def compute_spectra(df, downsample_mr001=False):
 
         f, psd_mt, _ = tsa.spectral.multi_taper_psd(motion_denoised.T, #assumes data is space x time
                                                     Fs=1/TR,
-                                                    NW=None, # defaults to 4, which means 8 tapers
+                                                    NW=2, # defaults to 4, which means 7 tapers
                                                     BW=None, # defaults to None
                                                     adaptive=False, # adaptive weighting of tapers, could be used (slow)
                                                     jackknife=False, # jackknife estimation of variance, which we don't assess
@@ -85,11 +85,11 @@ if __name__ == "__main__":
     with open("config.json") as f:
         config = json.load(f)
 
-    strategies = config["strategies"]
-
     # Load the DataFrame containing scan information
     df = pd.read_csv('data/func_scans_table_outliers_ses-PSI_PPLSDI.csv')
     df = df[df['task']==config["task"]]
+    df = df[df['include_manual_qc']]
+    df = df[df['include_scan_coil_numvols']]
 
     downsample_mr001 = False
     

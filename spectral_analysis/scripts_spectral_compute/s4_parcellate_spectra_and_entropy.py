@@ -16,7 +16,7 @@ def parcellate_spectrum(df, denoising_strategy, config, downsample_mr001=False):
     None
     """
     # load parcellation
-    _, parcellation, _, _ = import_mask_and_parcellation()
+    _, parcellation, _, _ = import_mask_and_parcellation(config['parcellation'])
     unique_parcels = np.unique(parcellation)
     unique_parcels = unique_parcels[unique_parcels != 0]  # remove background parcel
 
@@ -37,13 +37,13 @@ def parcellate_spectrum(df, denoising_strategy, config, downsample_mr001=False):
             try:
                 spectrum_file = os.path.join(spectrum_dir, os.path.basename(scan['preproc_filename_cifti']).replace('.dtseries.nii', add_downsampled_label+filetype))
                 if 'dtseries' in filetype:
-                    if os.path.exists(spectrum_file.replace('.dtseries.nii', '_parcellated_schaefertian232.txt')):
+                    if os.path.exists(spectrum_file.replace('.dtseries.nii', '_parcellated_'+config['parcellation']+'.txt')):
                         print(f"Parcellated spectrum already exists for scan {os.path.basename(scan['preproc_filename_cifti'])}, skipping")
-                        continue
+                        # continue
                 elif 'dscalar' in filetype:
-                    if os.path.exists(spectrum_file.replace('.dscalar.nii', '_parcellated_schaefertian232.txt')):
+                    if os.path.exists(spectrum_file.replace('.dscalar.nii', '_parcellated_'+config['parcellation']+'.txt')):
                         print(f"Parcellated spectrum already exists for scan {os.path.basename(scan['preproc_filename_cifti'])}, skipping")
-                        continue
+                        # continue
                 img = nib.load(spectrum_file)
                 tsnr = nib.load(os.path.join(preproc_dir, os.path.basename(scan['preproc_filename_cifti']).replace('.dtseries.nii', '_tsnr.dscalar.nii'))).get_fdata()
             except:
@@ -68,13 +68,10 @@ def parcellate_spectrum(df, denoising_strategy, config, downsample_mr001=False):
                 mask = (parcellation == parcel) & (tsnr[0,:] > config['min_tsnr'])  # only include voxels with tSNR > 0
                 if np.sum(mask) == 0:
                     raise_error = True
-                    # raise ValueError(f"Warning: Parcel {parcel} not found in parcellation, skipping")
                 elif np.isnan(data[:, mask]).all():
                     raise_error = True
-                    # raise ValueError(f"Warning: All values in parcel {parcel} are NaN, skipping")
                 elif np.any(np.sum(data[:,mask]**2,0)==0):
                     raise_error = True
-                    # raise ValueError(f"Parcel {parcel} has no data in scan {scan['preproc_filename_cifti']}")
                 else:
                     raise_error = False
                 if raise_error:
@@ -92,9 +89,9 @@ def parcellate_spectrum(df, denoising_strategy, config, downsample_mr001=False):
 
             # Save the time series to a file
             if 'dtseries' in filetype:
-                output_file = spectrum_file.replace('.dtseries.nii', '_parcellated_schaefertian232.txt')
+                output_file = spectrum_file.replace('.dtseries.nii', '_parcellated_'+config['parcellation']+'.txt')
             elif 'dscalar' in filetype:
-                output_file = spectrum_file.replace('.dscalar.nii', '_parcellated_schaefertian232.txt')
+                output_file = spectrum_file.replace('.dscalar.nii', '_parcellated_'+config['parcellation']+'.txt')
             np.savetxt(output_file, parcel_spectrum)
 
 if __name__ == "__main__":

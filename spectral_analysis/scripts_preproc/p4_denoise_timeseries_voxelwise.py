@@ -15,9 +15,8 @@ def denoise_data(df, denoising_strategy, bands=None, spike_regression=False, fd_
             # check if the output file already exists because this can take a long time
             output_dir = 'data/denoised/'+denoising_strategy+'/' + scan.subject + '/' + scan.session + '/func/'
             if os.path.exists(output_dir+ os.path.basename(scan['preproc_filename_cifti']).replace('.dtseries.nii', '_denoised.dtseries.nii')):
-                print(f"Output file already exists for scan {scan['preproc_filename_cifti']}, skipping")
+                print(f"Output file already exists for scan {os.path.basename(scan['preproc_filename_cifti'])}, skipping")
                 continue
-            print(f"Processing scan: {scan.subject} {scan.session} {scan.task} {scan.run}")
             if 'despike' in denoising_strategy:
                 img = nib.load(os.path.join(input_dir, os.path.basename(scan['preproc_filename_cifti']).replace('_bold.dtseries.nii', '_desc-despiked_bold.dtseries.nii')))
             elif 'aroma' in denoising_strategy:
@@ -26,15 +25,19 @@ def denoise_data(df, denoising_strategy, bands=None, spike_regression=False, fd_
                 img = nib.load(scan['preproc_filename_cifti'])
 
             # Load the confounds
-            confounds_file_orig = nilearn.interfaces.fmriprep.load_confounds_utils.get_confounds_file(scan['preproc_filename_cifti'], flag_full_aroma=False)
-            if spike_regression:
-                confounds_file = 'data/interim/confounds_'+denoising_strategy+'_spike_regression_fd'+str(fd_threshold)+'_std_dvars'+str(std_dvars_threshold)+'/'+scan.subject+'/'+scan.session+'/func/' + os.path.basename(confounds_file_orig).replace('.tsv', '_filtered.tsv')
+            if denoising_strategy == 'no_denoising':
+                confounds = None
             else:
-                confounds_file = 'data/interim/confounds_'+denoising_strategy+'/'+scan.subject+'/'+scan.session+'/func/' + os.path.basename(confounds_file_orig).replace('.tsv', '_filtered.tsv')
-            confounds = pd.read_csv(confounds_file, sep='\t')
+                confounds_file_orig = nilearn.interfaces.fmriprep.load_confounds_utils.get_confounds_file(scan['preproc_filename_cifti'], flag_full_aroma=False, flag_tedana=False)
+                if spike_regression:
+                    confounds_file = 'data/interim/confounds_'+denoising_strategy+'_spike_regression_fd'+str(fd_threshold)+'_std_dvars'+str(std_dvars_threshold)+'/'+scan.subject+'/'+scan.session+'/func/' + os.path.basename(confounds_file_orig).replace('.tsv', '_filtered.tsv')
+                else:
+                    confounds_file = 'data/interim/confounds_'+denoising_strategy+'/'+scan.subject+'/'+scan.session+'/func/' + os.path.basename(confounds_file_orig).replace('.tsv', '_filtered.tsv')
+                confounds = pd.read_csv(confounds_file, sep='\t')
         except:
             print(f"Scan {scan['preproc_filename_cifti']} does not exist, skipping")
             continue
+        print(f"Processing scan: {scan.subject} {scan.session} {scan.task} {scan.run} with strategy {denoising_strategy}")
 
         data = img.get_fdata()            
         orig_num_voxels = data.shape[1]
@@ -52,7 +55,7 @@ def denoise_data(df, denoising_strategy, bands=None, spike_regression=False, fd_
                                 filter=False,
                                 detrend=True, #DCT does the detrending automatically but nilearn warns when not detrending, doesn't hurt to do it again
                                 standardize=standardize,
-                                standardize_confounds=False, # they are already standardized
+                                standardize_confounds=True, # they are already standardized
                                 ensure_finite=True) # if true, nans will be replaced with zeros - we already add a check for zeros later
         
         os.makedirs(output_dir, exist_ok=True)
@@ -96,7 +99,8 @@ if __name__ == "__main__":
     with open("config.json") as f:
         config = json.load(f)
 
-    bands = config["frequency_bands"]
+    # bands = config["frequency_bands"]
+    bands = None
     spike_regression = config["spike_regression"]
     strategies = config["strategies"]
     standardize = config["standardize"]
@@ -114,5 +118,9 @@ if __name__ == "__main__":
 
     # Denoise the data
     for denoising_strategy in strategies:
+        # if denoising_strategy not in ['9p']:
+        #     continue
+        # if denoising_strategy not in ['ica-aroma','ica-aroma-gsr']:
+        #     continue
         print(f"Denoising data with strategy: {denoising_strategy}")
         denoise_data(df, denoising_strategy, bands, spike_regression=spike_regression, fd_threshold=fd_threshold, std_dvars_threshold=std_dvars_threshold,standardize=standardize)

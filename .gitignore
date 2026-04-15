@@ -12,3 +12,11 @@ tmp.ipynb
 *unused*
 *Untitled*
 **/*/__pycache__/
+config_martin.json
+run_all_scripts.sh
+spectral_analysis/scripts_cbf/
+spectral_analysis/scripts_connectivity/
+spectral_analysis/scripts_preproc/p7_combined_denoising_connectome.py
+spectral_analysis/scripts_preproc/p8_compute_reho.py
+spectral_analysis/scripts_spectral_analysis/a7_prepare_df_bands_parcels_asl.py
+*.mplstyle
